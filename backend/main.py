@@ -1,11 +1,15 @@
 from pathlib import Path
 from typing import Literal, Optional
 import pyodbc
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from database import get_connection, get_db_cursor
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import Depends
+from auth import authenticate_and_sync
+from security import create_token, get_current_user, require_role
 import uvicorn
 
 app = FastAPI(title="IT Assets Management API")
@@ -56,15 +60,22 @@ class AssetUpdate(BaseModel):
     Condition: Optional[Literal["New", "Good", "Fair", "Poor"]] = None
     Status: Optional[Literal["Under Repair", "Retired", "Active"]] = None
 
+
 class NewTransfer(BaseModel):
     AssetID: int
     ToEmployeeID: Optional[str] = None   # leave empty to return asset to IT stock
     HandledByID: str
     Notes: Optional[str] = None
 
+class UserRoleUpdate(BaseModel):
+    AppRole: Literal["Admin", "Manager", "Viewer"]
+
+class UserActiveUpdate(BaseModel):
+    IsActive: bool
+
 # --- API Endpoints ---
 @app.get("/assets")
-def get_assets():
+def get_assets(current_user: dict = Depends(get_current_user)):
     try:
         query = """
             SELECT a.AssetID, a.ItemType, a.Brand, a.Model, a.SerialNo,
@@ -85,19 +96,20 @@ def get_assets():
         raise HTTPException(status_code=500, detail=str(exc))
 
 @app.post("/assets", status_code=201)
-def create_asset(asset: NewAsset):
+def create_asset(asset: NewAsset, current_user: dict = Depends(require_role("Admin", "Manager"))):
     conn = get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute(
             """
             INSERT INTO Assets (ItemType, Brand, Model, SerialNo, Memory, Storage,
-                                Processor, [Condition], Status)
+                                Processor, [Condition], Status, CreatedByUserID)
             OUTPUT INSERTED.AssetID
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'In Stock')
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'In Stock', ?)
             """,
             asset.ItemType, asset.Brand, asset.Model, asset.SerialNo,
             asset.Memory, asset.Storage, asset.Processor, asset.Condition,
+            current_user["UserID"],
         )
         new_id = cursor.fetchone()[0]
         conn.commit()
@@ -108,7 +120,7 @@ def create_asset(asset: NewAsset):
     return {"AssetID": new_id, "message": "Asset created"}
 
 @app.put("/assets/{asset_id}")
-def update_asset(asset_id: int, update: AssetUpdate):
+def update_asset(asset_id: int, update: AssetUpdate, current_user: dict = Depends(require_role("Admin", "Manager"))):
     changes = update.model_dump(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=400, detail="Nothing to update")
@@ -120,8 +132,6 @@ def update_asset(asset_id: int, update: AssetUpdate):
         asset = cursor.fetchone()
         if asset is None:
             raise HTTPException(status_code=404, detail="Asset not found")
-        if asset.Status == "Retired":
-            raise HTTPException(status_code=400, detail="Retired assets cannot be edited")
 
         if "Status" in changes and changes["Status"] == "Active":
             cursor.execute(
@@ -146,7 +156,7 @@ def update_asset(asset_id: int, update: AssetUpdate):
     return {"message": "Asset updated"}
 
 @app.post("/transfers", status_code=201)
-def create_transfer(transfer: NewTransfer):
+def create_transfer(transfer: NewTransfer, current_user: dict = Depends(require_role("Admin", "Manager"))):
     conn = get_connection()
     cursor = conn.cursor()
     try:
@@ -191,7 +201,7 @@ def create_transfer(transfer: NewTransfer):
     return {"message": "Transfer recorded", "new_status": new_status}
 
 @app.get("/transfers")
-def get_transfers(asset_id: Optional[int] = None):
+def get_transfers(asset_id: Optional[int] = None, current_user: dict = Depends(get_current_user)):
     try:
         sql = """
             SELECT t.TransferID, t.AssetID, a.ItemType, a.SerialNo,
@@ -216,7 +226,7 @@ def get_transfers(asset_id: Optional[int] = None):
         raise HTTPException(status_code=500, detail=str(exc))
 
 @app.get("/employees")
-def get_employees(department: Optional[str] = None):
+def get_employees(department: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     try:
         sql = """
             SELECT EmployeeID, EmployeeName, Department, Designation, Grade
@@ -233,7 +243,7 @@ def get_employees(department: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(exc))
 
 @app.get("/stats")
-def get_stats():
+def get_stats(current_user: dict = Depends(get_current_user)):
     try:
         total = run_query("SELECT COUNT(*) AS Total FROM Assets")[0]["Total"]
 
@@ -268,6 +278,97 @@ def get_stats():
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+# --- Auth Endpoints ---
+@app.post("/api/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """
+    Standard OAuth2 password flow. The frontend POSTs form-encoded
+    'username' and 'password' fields (not JSON) — that's what
+    OAuth2PasswordRequestForm expects.
+    """
+    user = authenticate_and_sync(form_data.username, form_data.password)
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials or account is inactive",
+        )
+
+    token = create_token(user["Username"], user["AppRole"])
+    return {
+        "access_token": token,
+        "token_type":   "bearer",
+        "user": {
+            "Username":    user["Username"],
+            "DisplayName": user["DisplayName"],
+            "AppRole":     user["AppRole"],
+        },
+    }
+
+
+@app.get("/api/me")
+def me(current_user: dict = Depends(get_current_user)):
+    """Returns the currently logged-in user's profile. Used to test the JWT."""
+    return {
+        "UserID":      current_user["UserID"],
+        "Username":    current_user["Username"],
+        "DisplayName": current_user["DisplayName"],
+        "Email":       current_user["Email"],
+        "AppRole":     current_user["AppRole"],
+        "LastLogin":   current_user["LastLogin"],
+    }
+
+# --- Admin: user management ---
+@app.get("/api/users")
+def list_users(current_user: dict = Depends(require_role("Admin"))):
+    with get_db_cursor() as cur:
+        cur.execute(
+            "SELECT UserID, Username, DisplayName, Email, AppRole, IsActive, LastLogin, CreatedAt "
+            "FROM Users ORDER BY CreatedAt DESC"
+        )
+        cols = [c[0] for c in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
+@app.put("/api/users/{user_id}/role")
+def update_user_role(
+    user_id: int,
+    payload: UserRoleUpdate,
+    current_user: dict = Depends(require_role("Admin")),
+):
+    with get_db_cursor(commit=True) as cur:
+        cur.execute("SELECT UserID FROM Users WHERE UserID = ?", user_id)
+        if cur.fetchone() is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        cur.execute(
+            "UPDATE Users SET AppRole = ? WHERE UserID = ?",
+            payload.AppRole, user_id,
+        )
+    return {"message": "Role updated", "UserID": user_id, "AppRole": payload.AppRole}
+
+
+@app.put("/api/users/{user_id}/active")
+def update_user_active(
+    user_id: int,
+    payload: UserActiveUpdate,
+    current_user: dict = Depends(require_role("Admin")),
+):
+    if user_id == current_user["UserID"] and payload.IsActive is False:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot deactivate your own account",
+        )
+
+    with get_db_cursor(commit=True) as cur:
+        cur.execute("SELECT UserID FROM Users WHERE UserID = ?", user_id)
+        if cur.fetchone() is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        cur.execute(
+            "UPDATE Users SET IsActive = ? WHERE UserID = ?",
+            1 if payload.IsActive else 0, user_id,
+        )
+    return {"message": "Status updated", "UserID": user_id, "IsActive": payload.IsActive}
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

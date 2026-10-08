@@ -5,39 +5,163 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>IT Asset Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #222; }
-    header { background: #1f3a5f; color: #fff; padding: 16px 24px; }
-    main { padding: 24px; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-    .card .num { font-size: 32px; font-weight: bold; }
-    .card .label { color: #666; font-size: 14px; }
-    .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .chart-card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-    .chart-card h3 { margin: 0 0 12px; font-size: 15px; }
-    .chart-box { position: relative; height: 240px; }
-    .filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
-    .filters input, .filters select { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-    .filters input { min-width: 240px; }
-    #count { color: #666; font-size: 14px; }
-    dialog { border: none; border-radius: 8px; padding: 20px; width: 380px; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
-    dialog::backdrop { background: rgba(0,0,0,.4); }
-    dialog label { display: block; margin-top: 12px; font-size: 14px; }
-    dialog select, dialog input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
-    .btn { padding: 6px 12px; border: none; border-radius: 6px; background: #1f3a5f; color: #fff; cursor: pointer; }
-    .btn:disabled { background: #aaa; cursor: not-allowed; }
-    .btn.secondary { background: #e5e7eb; color: #222; }
-    #transfer-error { color: #b91c1c; font-size: 14px; margin-top: 10px; }
-    .banner { display: none; background: #fee2e2; color: #991b1b; padding: 12px 24px; font-size: 14px; }
-    .table-wrap { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); overflow-x: auto; }
-    table { border-collapse: collapse; width: 100%; font-size: 14px; }
-    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; white-space: nowrap; }
-    th { background: #f0f3f7; position: sticky; top: 0; }
+    :root {
+      color-scheme: light;
+      --ink: #182433;
+      --muted: #6d7a89;
+      --line: #dfe5ec;
+      --surface: #fff;
+      --canvas: #f3f5f8;
+      --blue: #3268d5;
+      --blue-dark: #2454b4;
+      --blue-wash: #edf3ff;
+      --teal: #238a82;
+      --amber: #c88721;
+      --red: #c85b55;
+      --shadow: 0 2px 8px rgba(25, 39, 58, .045);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font-family: "DM Sans", sans-serif; -webkit-font-smoothing: antialiased; }
+        header { position: relative; padding: 24px max(28px, calc((100vw - 1440px) / 2)); color: #fff; background: #172536; border-bottom: 3px solid var(--blue); }
+    header h1 { margin: 0; font: 800 24px/1.2 "Manrope", sans-serif; }
+    main { width: min(1440px, 100%); margin: 0 auto; padding: 26px 28px 40px; }
+    .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .card, .chart-card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+    .card { min-height: 112px; padding: 18px 20px; border-top: 2px solid var(--blue); }
+    .card:nth-child(2) { border-top-color: var(--teal); }
+    .card:nth-child(3) { border-top-color: var(--amber); }
+    .card:nth-child(4) { border-top-color: var(--red); }
+    .card .num { color: var(--ink); font: 800 32px/1.15 "Manrope", sans-serif; font-variant-numeric: tabular-nums; }
+    .card .label { margin-top: 7px; color: var(--muted); font-size: 13px; font-weight: 600; }
+    .charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .chart-card { min-width: 0; padding: 17px 18px 14px; }
+    .chart-card h3 { margin: 0 0 12px; color: #344357; font: 700 14px/1.3 "Manrope", sans-serif; }
+    .chart-box { position: relative; height: 210px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; margin-bottom: 12px; }
+    .filters input, .filters select, dialog select, dialog input { min-height: 38px; padding: 8px 11px; border: 1px solid #d5dde7; border-radius: 6px; background: #fff; color: var(--ink); font: 500 13px "DM Sans", sans-serif; }
+    .filters input { flex: 1 1 240px; min-width: 200px; }
+    .filters select { flex: 0 1 auto; max-width: 190px; }
+    input:focus, select:focus { outline: 3px solid rgba(50, 104, 213, .16); border-color: var(--blue); }
+    #count { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .btn { min-height: 36px; padding: 8px 13px; border: 1px solid var(--blue); border-radius: 6px; background: var(--blue); color: #fff; font: 700 12px "DM Sans", sans-serif; cursor: pointer; transition: background .16s ease, transform .16s ease, border-color .16s ease; }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); background: var(--blue-dark); border-color: var(--blue-dark); }
+    .btn:focus-visible { outline: 3px solid rgba(50, 104, 213, .23); outline-offset: 2px; }
+    .btn:disabled { background: #aeb8c5; border-color: #aeb8c5; cursor: not-allowed; }
+    .btn.secondary { border-color: #d5dde7; background: #fff; color: #344357; }
+    .btn.secondary:hover:not(:disabled) { background: var(--blue-wash); border-color: #b9c9e7; }
+    .table-wrap { overflow: auto; max-height: 62vh; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid #e9edf2; text-align: left; white-space: nowrap; }
+    th { position: sticky; top: 0; z-index: 1; background: #f0f3f7; color: #526174; font-size: 11px; font-weight: 700; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #f5f8fd; }
+    td .btn { min-height: 30px; padding: 6px 9px; font-size: 11px; }
+    dialog { width: min(420px, calc(100vw - 32px)); max-height: 90vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 23px; color: var(--ink); box-shadow: 0 24px 70px rgba(19, 34, 53, .25); }
+    dialog::backdrop { background: rgba(18, 31, 47, .48); backdrop-filter: blur(3px); }
+    dialog h3 { margin: 0 0 16px; font: 800 19px "Manrope", sans-serif; }
+    dialog label { display: block; margin-top: 13px; color: #526174; font-size: 12px; font-weight: 700; }
+    dialog select, dialog input { display: block; width: 100%; margin-top: 5px; }
+    #transfer-asset, #edit-asset, #history-asset { color: #647386; font-size: 13px; }
+    #transfer-error, #add-error, #edit-error { color: #b74843 !important; font-size: 13px !important; }
+    .banner { display: none; padding: 12px max(28px, calc((100vw - 1440px) / 2)); background: #fff0ef; color: #a83d3b; font-size: 13px; font-weight: 600; }
+    @media (max-width: 1100px) {
+      .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .chart-box { height: 220px; }
+    }
+    @media (max-width: 700px) {
+      header { padding: 21px 18px; }
+      header h1 { font-size: 21px; }
+      main { padding: 18px 14px 28px; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+      .card { min-height: 98px; padding: 15px 16px; }
+      .card .num { font-size: 27px; }
+      .charts { gap: 10px; margin-bottom: 18px; }
+      .chart-card { padding: 14px 12px 10px; }
+      .chart-box { height: 190px; }
+      .filters { gap: 8px; }
+      .filters input { flex-basis: 100%; }
+      .filters select { flex: 1 1 calc(50% - 8px); max-width: none; }
+      #count { margin: 2px 0 0 auto; }
+      .table-wrap { max-height: 58vh; }
+    }
+    @media (max-width: 420px) {
+      .charts { grid-template-columns: 1fr; }
+      .chart-box { height: 220px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+    /* --- Login overlay --- */
+    #login-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #172536 0%, #2454b4 100%);
+    }
+    #login-overlay.hidden { display: none; }
+    #login-box {
+      width: min(380px, calc(100vw - 32px));
+      padding: 28px 26px;
+      background: #fff; border-radius: 10px;
+      box-shadow: 0 24px 70px rgba(19, 34, 53, .35);
+    }
+    #login-box h2 { margin: 0 0 6px; font: 800 22px "Manrope", sans-serif; color: var(--ink); }
+    #login-box p { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+    #login-box label { display: block; margin-top: 12px; color: #526174; font-size: 12px; font-weight: 700; }
+    #login-box input {
+      display: block; width: 100%; margin-top: 5px;
+      min-height: 40px; padding: 9px 12px;
+      border: 1px solid #d5dde7; border-radius: 6px;
+      font: 500 14px "DM Sans", sans-serif;
+    }
+    #login-box input:focus { outline: 3px solid rgba(50, 104, 213, .16); border-color: var(--blue); }
+    #login-box button {
+      width: 100%; margin-top: 18px; min-height: 42px;
+      border: 1px solid var(--blue); border-radius: 6px;
+      background: var(--blue); color: #fff;
+      font: 700 14px "DM Sans", sans-serif; cursor: pointer;
+    }
+    #login-box button:hover:not(:disabled) { background: var(--blue-dark); }
+    #login-box button:disabled { background: #aeb8c5; border-color: #aeb8c5; cursor: not-allowed; }
+    #login-error { margin-top: 12px; color: #b74843; font-size: 13px; min-height: 18px; }
+        #header-actions {
+      position: absolute; top: 22px; right: max(28px, calc((100vw - 1440px) / 2));
+      display: flex; gap: 8px;
+    }
+    #header-actions button {
+      min-height: 32px; padding: 6px 12px;
+      border: 1px solid rgba(255,255,255,.25); border-radius: 6px;
+      background: transparent; color: #fff;
+      font: 600 12px "DM Sans", sans-serif; cursor: pointer;
+    }
+    #header-actions button:hover { background: rgba(255,255,255,.1); }
   </style>
 </head>
-<body>
-  <header><h1>IT Asset Dashboard</h1></header>
+<body>  <div id="login-overlay">
+    <div id="login-box">
+      <h2>IT Asset Dashboard</h2>
+      <p>Sign in with your HNL domain account</p>
+      <label>Username
+        <input id="login-user" autocomplete="username" autocapitalize="none" spellcheck="false">
+      </label>
+      <label>Password
+        <input id="login-pass" type="password" autocomplete="current-password">
+      </label>
+      <button id="login-btn">Sign in</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+   <header>
+    <h1>IT Asset Dashboard</h1>
+    <div id="header-actions">
+      <button id="users-btn" title="Manage users">Manage users</button>
+      <button id="logout-btn" title="Sign out">Sign out</button>
+    </div>
+  </header>
   <div id="api-error" class="banner">Cannot reach the server. Make sure the API is running, then reload this page.</div>
   <main>
     <div class="cards">
@@ -139,7 +263,7 @@
         <option value="">No change</option>
         <option value="Under Repair">Send for repair</option>
         <option value="Active">Back from repair</option>
-        <option value="Retired">Retire permanently</option>
+        <option value="Retired">Retire</option>
       </select>
     </label>
     <div id="edit-error" style="color:#b91c1c; font-size:14px; margin-top:10px;"></div>
@@ -165,15 +289,87 @@
     </div>
   </dialog>
 
+  <dialog id="users-dialog" style="width:960px; max-width:95vw;">
+    <h3>Manage users</h3>
+    <p style="margin:0 0 14px; color:#6d7a89; font-size:13px;">
+      Users are created automatically when they log in. Change their role or deactivate them here.
+    </p>
+    <div style="overflow-x:auto; max-height:420px; border:1px solid var(--line); border-radius:6px;">
+      <table style="width:100%;">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Display name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Last login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-body"></tbody>
+      </table>
+    </div>
+    <div id="users-error" style="color:#b74843; font-size:13px; margin-top:10px; min-height:18px;"></div>
+    <div style="margin-top:16px; text-align:right;">
+      <button class="btn secondary" id="u-close">Close</button>
+    </div>
+  </dialog>
   <script>
-    const API = "";
+        const API = "";
+    const TOKEN_KEY = "hnl_token";
+    const USER_KEY  = "hnl_user";
+
+    function getToken()        { return localStorage.getItem(TOKEN_KEY); }
+    function setToken(t)       { localStorage.setItem(TOKEN_KEY, t); }
+    function getUser()         { try { return JSON.parse(localStorage.getItem(USER_KEY) || "null"); } catch { return null; } }
+    function setUser(u)        { localStorage.setItem(USER_KEY, JSON.stringify(u)); }
+    function clearSession()    { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); }
+
+    function showLogin() {
+      document.getElementById("login-overlay").classList.remove("hidden");
+      document.getElementById("login-user").focus();
+    }
+    function hideLogin() {
+      document.getElementById("login-overlay").classList.add("hidden");
+    }
+
+       function showError(e) {
+      if (e && e.__handled) return;   // already handled by authedFetch
+      document.getElementById("api-error").style.display = "block";
+    }
+    
+
+    // fetch wrapper: adds the bearer token and reacts to 401 by showing login
+        async function authedFetch(path, options = {}) {
+      const token = getToken();
+      const headers = new Headers(options.headers || {});
+      if (token) headers.set("Authorization", "Bearer " + token);
+
+      const res = await fetch(API + path, { ...options, headers });
+
+      if (res.status === 401) {
+        clearSession();
+        showLogin();
+        const err = new Error("Session expired");
+        err.__handled = true;   // tells callers not to show the "server unreachable" banner
+        throw err;
+      }
+      return res;
+    }
+
+    async function getJSON(path) {
+      const res = await authedFetch(path);
+      if (!res.ok) throw new Error("Request failed: " + res.status);
+      return res.json();
+    }
 
     function showError() {
       document.getElementById("api-error").style.display = "block";
     }
 
     async function getJSON(path) {
-      const res = await fetch(API + path);
+            const res = await authedFetch(path);
       if (!res.ok) throw new Error("Request failed: " + res.status);
       return res.json();
     }
@@ -192,7 +388,10 @@
       return item ? item.Count : 0;
     }
 
-    const colors = ["#1f3a5f", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#14b8a6", "#6b7280"];
+    Chart.defaults.color = "#6d7a89";
+    Chart.defaults.font.family = '"DM Sans", sans-serif';
+    Chart.defaults.font.size = 11;
+    const colors = ["#3268d5", "#238a82", "#c88721", "#c85b55", "#5685a8", "#78956a", "#8a78b5", "#788596"];
 
     function drawChart(id, type, list) {
       new Chart(document.getElementById(id), {
@@ -205,7 +404,10 @@
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { display: type !== "bar" } },
-          scales: type === "bar" ? { y: { beginAtZero: true, ticks: { precision: 0 } } } : {}
+          scales: type === "bar" ? {
+            x: { grid: { display: false }, ticks: { color: "#6d7a89" } },
+            y: { beginAtZero: true, ticks: { precision: 0, color: "#6d7a89" }, grid: { color: "#e9edf2" } }
+          } : {}
         }
       });
     }
@@ -276,7 +478,6 @@
         editBtn.className = "btn secondary";
         editBtn.style.marginLeft = "6px";
         editBtn.textContent = "Edit";
-        editBtn.disabled = a.Status === "Retired";
         editBtn.addEventListener("click", () => openEdit(a));
         actionTd.appendChild(editBtn);
 
@@ -361,7 +562,7 @@
         HandledByID: document.getElementById("t-by").value,
         Notes: document.getElementById("t-notes").value || null
       };
-      const res = await fetch(API + "/transfers", {
+            const res = await authedFetch("/transfers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
@@ -376,10 +577,6 @@
 
     // ---------- Add asset ----------
     document.getElementById("add-btn").addEventListener("click", () => {
-     document.getElementById("add-btn").addEventListener("click", () => {
-  document.getElementById("add-error").textContent = "";
-  document.getElementById("add-dialog").showModal();
-});
       document.getElementById("add-error").textContent = "";
       document.getElementById("add-dialog").showModal();
     });
@@ -407,7 +604,7 @@
         return;
       }
 
-      const res = await fetch(API + "/assets", {
+      const res = await authedFetch("/assets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
@@ -430,7 +627,11 @@
       document.getElementById("edit-asset").textContent =
         asset.ItemType + " - " + asset.SerialNo + " (" + asset.Status + ")";
       document.getElementById("e-condition").value = asset.Condition;
-      document.getElementById("e-status").value = "";
+      const statusSelect = document.getElementById("e-status");
+      statusSelect.innerHTML = asset.Status === "Retired"
+        ? '<option value="">No change</option><option value="Active">Reinstate (put back in service)</option>'
+        : '<option value="">No change</option><option value="Under Repair">Send for repair</option><option value="Active">Back from repair</option><option value="Retired">Retire</option>';
+      statusSelect.value = "";
       document.getElementById("edit-error").textContent = "";
       document.getElementById("edit-dialog").showModal();
     }
@@ -453,11 +654,11 @@
         return;
       }
       if (body.Status === "Retired" &&
-          !confirm("Retiring is permanent and the asset can no longer be edited or transferred. Continue?")) {
+          !confirm("Retire this asset? It cannot be transferred until it is reinstated.")) {
         return;
       }
 
-      const res = await fetch(API + "/assets/" + editAssetId, {
+      const res = await authedFetch("/assets/" + editAssetId, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
@@ -478,7 +679,7 @@
       body.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
       document.getElementById("history-dialog").showModal();
 
-      const res = await fetch(API + "/transfers?asset_id=" + asset.AssetID);
+      const res = await authedFetch("/transfers?asset_id=" + asset.AssetID);
       const rows = await res.json();
       body.innerHTML = "";
 
@@ -527,6 +728,203 @@
       link.click();
       URL.revokeObjectURL(url);
     });
+    // ---------- Login ----------
+    async function doLogin() {
+      const userInput = document.getElementById("login-user");
+      const passInput = document.getElementById("login-pass");
+      const btn       = document.getElementById("login-btn");
+      const errBox    = document.getElementById("login-error");
+
+      errBox.textContent = "";
+      btn.disabled = true;
+      btn.textContent = "Signing in...";
+
+      try {
+        const body = new URLSearchParams();
+        body.set("username", userInput.value.trim());
+        body.set("password", passInput.value);
+
+        const res = await fetch(API + "/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body
+        });
+
+        if (!res.ok) {
+          errBox.textContent = res.status === 401
+            ? "Invalid username or password."
+            : "Login failed (" + res.status + ").";
+          return;
+        }
+
+        const data = await res.json();
+        setToken(data.access_token);
+        setUser(data.user);
+        passInput.value = "";
+        hideLogin();
+        location.reload();
+      } catch (e) {
+        errBox.textContent = "Cannot reach the server.";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Sign in";
+      }
+    }
+
+    document.getElementById("login-btn").addEventListener("click", doLogin);
+    document.getElementById("login-pass").addEventListener("keydown", e => {
+      if (e.key === "Enter") doLogin();
+    });
+    document.getElementById("login-user").addEventListener("keydown", e => {
+      if (e.key === "Enter") document.getElementById("login-pass").focus();
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      clearSession();
+      location.reload();
+    });
+
+    // ---------- Manage users ----------
+    async function loadUsers() {
+      const body = document.getElementById("users-body");
+      const errBox = document.getElementById("users-error");
+      errBox.textContent = "";
+      body.innerHTML = "<tr><td colspan='7'>Loading...</td></tr>";
+
+      try {
+        const res = await authedFetch("/api/users");
+        if (!res.ok) {
+          body.innerHTML = "";
+          errBox.textContent = "Failed to load users (" + res.status + ").";
+          return;
+        }
+        const users = await res.json();
+        renderUsers(users);
+      } catch (e) {
+        body.innerHTML = "";
+        errBox.textContent = "Cannot reach the server.";
+      }
+    }
+
+    function renderUsers(users) {
+      const body = document.getElementById("users-body");
+      body.innerHTML = "";
+
+      if (users.length === 0) {
+        body.innerHTML = "<tr><td colspan='7'>No users yet</td></tr>";
+        return;
+      }
+
+      const me = getUser();
+
+      users.forEach(u => {
+        const tr = document.createElement("tr");
+
+        const addCell = (text) => {
+          const td = document.createElement("td");
+          td.textContent = text ?? "";
+          tr.appendChild(td);
+        };
+
+        addCell(u.Username);
+        addCell(u.DisplayName);
+        addCell(u.Email);
+
+        // Role dropdown
+        const roleTd = document.createElement("td");
+        const roleSel = document.createElement("select");
+        ["Viewer", "Manager", "Admin"].forEach(r => {
+          const o = document.createElement("option");
+          o.value = r;
+          o.textContent = r;
+          if (r === u.AppRole) o.selected = true;
+          roleSel.appendChild(o);
+        });
+        roleSel.disabled = u.IsActive === false;
+        roleSel.addEventListener("change", () => changeRole(u.UserID, roleSel.value, roleSel));
+        roleTd.appendChild(roleSel);
+        tr.appendChild(roleTd);
+
+        // Status
+        addCell(u.IsActive ? "Active" : "Inactive");
+
+        // Last login
+        addCell(u.LastLogin ? new Date(u.LastLogin).toLocaleString() : "Never");
+
+        // Actions
+        const actionTd = document.createElement("td");
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.className = u.IsActive ? "btn secondary" : "btn";
+        toggleBtn.textContent = u.IsActive ? "Deactivate" : "Activate";
+        if (me && me.Username === u.Username && u.IsActive) {
+          toggleBtn.disabled = true;
+          toggleBtn.title = "You cannot deactivate your own account";
+        }
+        toggleBtn.addEventListener("click", () => toggleActive(u.UserID, !u.IsActive, toggleBtn));
+        actionTd.appendChild(toggleBtn);
+
+        tr.appendChild(actionTd);
+        body.appendChild(tr);
+      });
+    }
+
+    async function changeRole(userId, newRole, selectEl) {
+      const errBox = document.getElementById("users-error");
+      errBox.textContent = "";
+      selectEl.disabled = true;
+
+      const res = await authedFetch("/api/users/" + userId + "/role", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ AppRole: newRole })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        errBox.textContent = err.detail || ("Failed to update role (" + res.status + ").");
+        await loadUsers();
+      } else {
+        await loadUsers();
+      }
+    }
+
+    async function toggleActive(userId, makeActive, btnEl) {
+      const errBox = document.getElementById("users-error");
+      errBox.textContent = "";
+      btnEl.disabled = true;
+
+      const res = await authedFetch("/api/users/" + userId + "/active", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ IsActive: makeActive })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        errBox.textContent = err.detail || ("Failed to update status (" + res.status + ").");
+        await loadUsers();
+      } else {
+        await loadUsers();
+      }
+    }
+
+    document.getElementById("users-btn").addEventListener("click", () => {
+      document.getElementById("users-dialog").showModal();
+      loadUsers();
+    });
+
+    document.getElementById("u-close").addEventListener("click", () => {
+      document.getElementById("users-dialog").close();
+    });
+
+
+    // ---------- Boot ----------
+    if (!getToken()) {
+      showLogin();
+    } else {
+      hideLogin();
+    }
   </script>
 </body>
 </html>

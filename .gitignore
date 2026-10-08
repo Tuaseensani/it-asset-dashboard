@@ -4,3 +4,29 @@ __pycache__/
 *.csv
 *.xlsx
 /SQL DB*.sql
+# Python
+*.pyc
+*.pyo
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

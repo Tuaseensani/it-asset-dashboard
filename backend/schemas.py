@@ -63,3 +63,21 @@ class TransferCreate(BaseModel):
     HandledByID: str  # The IT personnel who handled the transfer
     TransferDate: Optional[date] = None
     Notes: Optional[str] = None
+
+from datetime import datetime
+
+# --- User Schemas ---
+AppRoleType = Literal["Admin", "Manager", "Viewer"]
+
+class UserLogin(BaseModel):
+    Username: str
+    Password: str
+
+class UserResponse(BaseModel):
+    UserID: int
+    Username: str
+    DisplayName: Optional[str] = None
+    Email: Optional[str] = None
+    AppRole: AppRoleType
+    IsActive: bool
+    LastLogin: Optional[datetime] = None

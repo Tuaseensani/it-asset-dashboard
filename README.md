@@ -15,10 +15,31 @@ and keep a full audit trail of every transfer between IT stock and employees.
 - **Database:** Microsoft SQL Server
 - **Frontend:** HTML, CSS, JavaScript, Chart.js
 
+## Authentication
+- Users sign in with their **Active Directory** credentials (HNL domain).
+- Passwords are never stored — AD validates them via LDAP on every login.
+- On first successful login, the user is auto-created in the `Users` table with the **Viewer** role.
+- Sessions are JWT-based (8-hour expiry by default). No server-side session store.
+
+## Roles
+| Role    | Read | Create/Edit assets | Manage users |
+|---------|------|--------------------|--------------|
+| Viewer  | Yes  | No                 | No           |
+| Manager | Yes  | Yes                | No           |
+| Admin   | Yes  | Yes                | Yes          |
+
+Admins can change any user's role from the **Manage users** dialog in the dashboard.
+
 ## Run locally
 1. Install SQL Server (Express is fine) and the ODBC Driver 18 for SQL Server
 2. Run `database/schema.sql` in SQL Server Management Studio
-3. Copy `backend/.env.example` to `backend/.env` and set your server name
+3. Copy `backend/.env.example` to `backend/.env` and set:
+   - `DB_SERVER` — your SQL Server instance
+   - `AD_SERVER` — the domain controller (e.g., `HNL-DC.hnl.tv`)
+   - `AD_DOMAIN` — the AD domain (e.g., `hnl.tv`)
+   - `AD_BASE_DN` — the LDAP base DN (e.g., `DC=hnl,DC=tv`)
+   - `JWT_SECRET` — a random string; generate with:
+     `python -c "import secrets; print(secrets.token_urlsafe(64))"`
 4. In the `backend` folder, install the packages:
 
         pip install -r requirements.txt
@@ -33,5 +54,10 @@ On Windows you can also double-click `start.bat` after completing steps 1-4.
 
 ## Project structure
 - `backend/` FastAPI application
+  - `main.py` — API routes
+  - `auth.py` — AD (LDAP) authentication + user sync
+  - `security.py` — JWT creation and role checks
+  - `database.py` — SQL Server connection helpers
+  - `.env` — configuration (not committed)
 - `frontend/` Dashboard page
 - `database/` SQL schema
