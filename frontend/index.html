@@ -7,140 +7,159 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=Barlow+Semi+Condensed:wght@500;600&display=swap" rel="stylesheet">
   <style>
     :root {
       color-scheme: light;
-      --ink: #182433;
-      --muted: #6d7a89;
-      --line: #dfe5ec;
-      --surface: #fff;
-      --canvas: #f3f5f8;
-      --blue: #3268d5;
-      --blue-dark: #2454b4;
-      --blue-wash: #edf3ff;
-      --teal: #238a82;
-      --amber: #c88721;
-      --red: #c85b55;
-      --shadow: 0 2px 8px rgba(25, 39, 58, .045);
+      --rack: #11262E; --rack-2: #1B3641; --rack-line: #36525D; --on-rack: #EAF1F3; --on-rack-dim: #AFC2CA;
+      --bench: #E8ECEC; --paper: #FFFFFF; --ink: #17252B; --slate: #4E616B;
+      --rule: #CBD3D7; --rule-soft: #E2E8EA; --control: #76858E;
+      --cobalt: #1556C0; --cobalt-dark: #0F449B; --cobalt-wash: #E6EEFB; --danger: #B42318;
+      --issued-tint: #DDF3EF; --issued-ink: #0B5F57; --issued: #0F766E;
+      --stock-tint: #E1ECF8; --stock-ink: #1A55A0; --stock: #1D5FAB;
+      --repair-tint: #FBEBCB; --repair-ink: #7A4500; --repair: #C27C0E;
+      --retired-tint: #E6EAEE; --retired-ink: #46525D; --retired: #7A8794;
+      --poor-tint: #FDE4E1; --poor-ink: #9B1C13;
+      --fl-issued: #2FBF8A; --fl-in-stock: #5AAAF0; --fl-under-repair: #F2A93B; --fl-retired: #8796A1;
+      --sans: "Barlow", "Segoe UI", system-ui, sans-serif;
+      --cond: "Barlow Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+      --semi: "Barlow Semi Condensed", "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--canvas); color: var(--ink); font-family: "DM Sans", sans-serif; -webkit-font-smoothing: antialiased; }
-        header { position: relative; padding: 24px max(28px, calc((100vw - 1440px) / 2)); color: #fff; background: #172536; border-bottom: 3px solid var(--blue); }
-    header h1 { margin: 0; font: 800 24px/1.2 "Manrope", sans-serif; }
-    main { width: min(1440px, 100%); margin: 0 auto; padding: 26px 28px 40px; }
-    .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
-    .card, .chart-card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
-    .card { min-height: 112px; padding: 18px 20px; border-top: 2px solid var(--blue); }
-    .card:nth-child(2) { border-top-color: var(--teal); }
-    .card:nth-child(3) { border-top-color: var(--amber); }
-    .card:nth-child(4) { border-top-color: var(--red); }
-    .card .num { color: var(--ink); font: 800 32px/1.15 "Manrope", sans-serif; font-variant-numeric: tabular-nums; }
-    .card .label { margin-top: 7px; color: var(--muted); font-size: 13px; font-weight: 600; }
-    .charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
-    .chart-card { min-width: 0; padding: 17px 18px 14px; }
-    .chart-card h3 { margin: 0 0 12px; color: #344357; font: 700 14px/1.3 "Manrope", sans-serif; }
-    .chart-box { position: relative; height: 210px; }
-    .filters { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; margin-bottom: 12px; }
-    .filters input, .filters select, dialog select, dialog input { min-height: 38px; padding: 8px 11px; border: 1px solid #d5dde7; border-radius: 6px; background: #fff; color: var(--ink); font: 500 13px "DM Sans", sans-serif; }
-    .filters input { flex: 1 1 240px; min-width: 200px; }
-    .filters select { flex: 0 1 auto; max-width: 190px; }
-    input:focus, select:focus { outline: 3px solid rgba(50, 104, 213, .16); border-color: var(--blue); }
-    #count { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
-    .btn { min-height: 36px; padding: 8px 13px; border: 1px solid var(--blue); border-radius: 6px; background: var(--blue); color: #fff; font: 700 12px "DM Sans", sans-serif; cursor: pointer; transition: background .16s ease, transform .16s ease, border-color .16s ease; }
-    .btn:hover:not(:disabled) { transform: translateY(-1px); background: var(--blue-dark); border-color: var(--blue-dark); }
-    .btn:focus-visible { outline: 3px solid rgba(50, 104, 213, .23); outline-offset: 2px; }
-    .btn:disabled { background: #aeb8c5; border-color: #aeb8c5; cursor: not-allowed; }
-    .btn.secondary { border-color: #d5dde7; background: #fff; color: #344357; }
-    .btn.secondary:hover:not(:disabled) { background: var(--blue-wash); border-color: #b9c9e7; }
-    .table-wrap { overflow: auto; max-height: 62vh; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
-    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
-    th, td { padding: 11px 13px; border-bottom: 1px solid #e9edf2; text-align: left; white-space: nowrap; }
-    th { position: sticky; top: 0; z-index: 1; background: #f0f3f7; color: #526174; font-size: 11px; font-weight: 700; }
+    body { margin: 0; background: var(--bench); color: var(--ink); font: 400 15px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
+    :where(button, input, select, summary, textarea):focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+
+    /* ---- Masthead: title, account, and the fleet bar ---- */
+    .mast { padding: 20px max(24px, calc((100vw - 1440px) / 2)) 0; background: var(--rack); color: var(--on-rack); }
+    .mast :where(button):focus-visible { outline-color: #9CD8E8; }
+    .mast-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; }
+    .mast h1 { display: flex; align-items: center; gap: 12px; margin: 0; font: 600 28px/1 var(--cond); letter-spacing: .01em; }
+    .plate { padding: 5px 9px 4px; border-radius: 3px; background: var(--on-rack); color: var(--rack); font: 700 22px/1 var(--cond); letter-spacing: .05em; }
+    #header-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    #whoami { margin-right: 8px; color: var(--on-rack-dim); font-size: 14px; }
+    #header-actions button { min-height: 34px; padding: 5px 13px; border: 1px solid var(--rack-line); border-radius: 4px; background: transparent; color: var(--on-rack); font: 500 14px var(--sans); cursor: pointer; transition: background-color .12s ease; }
+    #header-actions button:hover { background: var(--rack-2); }
+    .fleet { display: flex; gap: 3px; height: 40px; margin-top: 22px; }
+    .fleet i { display: block; min-width: 8px; border-radius: 3px; background: var(--on-rack-dim); cursor: pointer; transition: opacity .12s ease; }
+    .fleet i:hover { opacity: .8; }
+    .fleet .fl-issued { background: var(--fl-issued); }
+    .fleet .fl-in-stock { background: var(--fl-in-stock); }
+    .fleet .fl-under-repair { background: var(--fl-under-repair); }
+    .fleet .fl-retired { background: var(--fl-retired); }
+    .rail { display: flex; flex-wrap: wrap; margin-top: 6px; }
+    .seg { flex: 1 1 140px; display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 12px 14px 14px 0; border: 0; border-top: 3px solid transparent; background: transparent; color: var(--on-rack); font: inherit; text-align: left; cursor: pointer; transition: background-color .12s ease; }
+    .seg + .seg { padding-left: 14px; }
+    .seg:hover { background: var(--rack-2); }
+    .seg-num { font: 600 32px/1.05 var(--cond); font-variant-numeric: tabular-nums; }
+    .seg-label { color: var(--on-rack-dim); font-size: 14px; }
+    .seg[aria-pressed="true"] { background: var(--rack-2); border-top-color: var(--on-rack); }
+    .seg[data-status="Issued"][aria-pressed="true"] { border-top-color: var(--fl-issued); }
+    .seg[data-status="In Stock"][aria-pressed="true"] { border-top-color: var(--fl-in-stock); }
+    .seg[data-status="Under Repair"][aria-pressed="true"] { border-top-color: var(--fl-under-repair); }
+    .seg[data-status="Retired"][aria-pressed="true"] { border-top-color: var(--fl-retired); }
+    .banner { display: none; padding: 10px max(24px, calc((100vw - 1440px) / 2)); background: #FDECEA; border-bottom: 1px solid #F2C4BF; color: var(--poor-ink); font-weight: 600; }
+    main { width: min(1440px, 100%); margin: 0 auto; padding: 20px 24px 40px; }
+
+    /* ---- Toolbar ---- */
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .toolbar input, .toolbar select, dialog select, dialog input, #login-box input { min-height: 40px; padding: 7px 10px; border: 1px solid var(--control); border-radius: 4px; background: var(--paper); color: var(--ink); font: 400 15px var(--sans); }
+    .toolbar input { flex: 1 1 260px; min-width: 200px; max-width: 380px; }
+    .toolbar select { max-width: 200px; }
+    #count { margin-left: auto; color: var(--slate); font-size: 14px; white-space: nowrap; }
+    .toolbar-actions { display: flex; gap: 8px; }
+
+    /* ---- Buttons ---- */
+    .btn { min-height: 40px; padding: 7px 16px; border: 1px solid var(--cobalt); border-radius: 4px; background: var(--cobalt); color: #fff; font: 600 14px var(--sans); cursor: pointer; transition: background-color .12s ease; }
+    .btn:hover:not(:disabled) { background: var(--cobalt-dark); border-color: var(--cobalt-dark); }
+    .btn:disabled { background: var(--rule-soft); border-color: var(--rule-soft); color: #7A8794; cursor: not-allowed; }
+    .btn.secondary { background: var(--paper); border-color: var(--control); color: var(--ink); }
+    .btn.secondary:hover:not(:disabled) { background: var(--cobalt-wash); border-color: var(--cobalt); }
+    td .btn { min-height: 30px; padding: 3px 10px; background: var(--paper); border-color: #A8BEE6; color: var(--cobalt); font-size: 13.5px; }
+    td .btn:hover:not(:disabled) { background: var(--cobalt-wash); border-color: var(--cobalt); }
+    td .btn.secondary { background: transparent; border-color: transparent; color: var(--ink); }
+    td .btn.secondary:hover:not(:disabled) { background: var(--bench); border-color: var(--rule); }
+    td .btn:disabled { background: transparent; border-color: transparent; color: #8A97A3; }
+
+    /* ---- Table ---- */
+    .table-wrap { overflow: auto; max-height: 64vh; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+    th, td { padding: 9px 12px; border-bottom: 1px solid var(--rule-soft); text-align: left; white-space: nowrap; vertical-align: middle; }
+    th { position: sticky; top: 0; z-index: 2; background: #F2F5F6; border-bottom: 1px solid var(--rule); color: var(--slate); font-weight: 600; font-size: 14px; }
     tbody tr:last-child td { border-bottom: 0; }
-    tbody tr:hover { background: #f5f8fd; }
-    td .btn { min-height: 30px; padding: 6px 9px; font-size: 11px; }
-    dialog { width: min(420px, calc(100vw - 32px)); max-height: 90vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 23px; color: var(--ink); box-shadow: 0 24px 70px rgba(19, 34, 53, .25); }
-    dialog::backdrop { background: rgba(18, 31, 47, .48); backdrop-filter: blur(3px); }
-    dialog h3 { margin: 0 0 16px; font: 800 19px "Manrope", sans-serif; }
-    dialog label { display: block; margin-top: 13px; color: #526174; font-size: 12px; font-weight: 700; }
-    dialog select, dialog input { display: block; width: 100%; margin-top: 5px; }
-    #transfer-asset, #edit-asset, #history-asset { color: #647386; font-size: 13px; }
-    #transfer-error, #add-error, #edit-error { color: #b74843 !important; font-size: 13px !important; }
-    .banner { display: none; padding: 12px max(28px, calc((100vw - 1440px) / 2)); background: #fff0ef; color: #a83d3b; font-size: 13px; font-weight: 600; }
-    @media (max-width: 1100px) {
-      .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .chart-box { height: 220px; }
-    }
-    @media (max-width: 700px) {
-      header { padding: 21px 18px; }
-      header h1 { font-size: 21px; }
-      main { padding: 18px 14px 28px; }
-      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
-      .card { min-height: 98px; padding: 15px 16px; }
-      .card .num { font-size: 27px; }
-      .charts { gap: 10px; margin-bottom: 18px; }
-      .chart-card { padding: 14px 12px 10px; }
-      .chart-box { height: 190px; }
-      .filters { gap: 8px; }
-      .filters input { flex-basis: 100%; }
-      .filters select { flex: 1 1 calc(50% - 8px); max-width: none; }
-      #count { margin: 2px 0 0 auto; }
-      .table-wrap { max-height: 58vh; }
-    }
-    @media (max-width: 420px) {
+    tbody tr:hover td { background: #F6F9FA; }
+    td.mono { font: 600 14.5px var(--semi); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+    .table-wrap th:last-child, .table-wrap td:last-child { position: sticky; right: 0; background: var(--paper); box-shadow: -1px 0 0 var(--rule); }
+    .table-wrap th:last-child { z-index: 3; background: #F2F5F6; }
+    .table-wrap tbody tr:hover td:last-child { background: #F6F9FA; }
+    tr.row-issued td:first-child { box-shadow: inset 4px 0 0 var(--fl-issued); }
+    tr.row-in-stock td:first-child { box-shadow: inset 4px 0 0 var(--fl-in-stock); }
+    tr.row-under-repair td:first-child { box-shadow: inset 4px 0 0 var(--fl-under-repair); }
+    tr.row-retired td:first-child { box-shadow: inset 4px 0 0 var(--fl-retired); }
+    tr.row-retired td { color: var(--slate); }
+    .tag { display: inline-block; padding: 1px 9px; border-radius: 3px; background: var(--retired-tint); color: var(--retired-ink); font: 600 13.5px/1.55 var(--semi); }
+    .st-issued, .co-good { background: var(--issued-tint); color: var(--issued-ink); }
+    .st-in-stock, .co-new { background: var(--stock-tint); color: var(--stock-ink); }
+    .st-under-repair, .co-fair { background: var(--repair-tint); color: var(--repair-ink); }
+    .co-poor { background: var(--poor-tint); color: var(--poor-ink); }
+    .table-wrap .empty-row td { position: static; box-shadow: none; padding: 30px 16px; background: var(--paper); color: var(--slate); }
+    .empty-row .btn { margin-left: 12px; }
+
+    /* ---- Overview charts ---- */
+    .overview { margin-top: 20px; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+    .overview > summary { padding: 12px 16px; font: 600 18px var(--cond); cursor: pointer; }
+    .overview[open] > summary { border-bottom: 1px solid var(--rule); }
+    .charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--rule); }
+    .charts > section { min-width: 0; padding: 14px 16px 12px; background: var(--paper); }
+    .charts h3 { margin: 0 0 10px; font: 600 16px var(--cond); }
+    .chart-box { position: relative; height: 200px; }
+
+    /* ---- Dialogs ---- */
+    dialog { width: min(440px, calc(100vw - 32px)); max-height: 90vh; overflow: auto; padding: 22px; border: 1px solid var(--rule); border-top: 6px solid var(--rack); border-radius: 4px; background: var(--paper); color: var(--ink); box-shadow: 0 18px 48px rgba(17, 38, 46, .3); font-family: var(--sans); }
+    dialog::backdrop { background: rgba(17, 38, 46, .55); }
+    dialog h3 { margin: 0 0 14px; font: 600 24px/1.1 var(--cond); }
+    dialog label { display: block; margin-top: 12px; color: var(--ink); font-size: 14px; font-weight: 600; }
+    dialog select, dialog input { display: block; width: 100%; margin-top: 4px; font-weight: 400; }
+    #transfer-asset, #edit-asset, #history-asset { color: var(--slate); font-size: 14px; }
+    #transfer-error, #add-error, #edit-error, #users-error, #login-error { color: var(--danger) !important; font-size: 14px !important; }
+
+    /* ---- Sign-in ---- */
+    #login-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--rack); }
+    #login-overlay.hidden { display: none; }
+    #login-box { width: min(400px, 100%); padding: 28px; background: var(--paper); border-radius: 4px; }
+    #login-box h2 { margin: 0 0 4px; font: 600 30px/1.1 var(--cond); }
+    #login-box p { margin: 0 0 16px; color: var(--slate); }
+    #login-box label { display: block; margin-top: 12px; font-size: 14px; font-weight: 600; }
+    #login-box input { display: block; width: 100%; margin-top: 4px; min-height: 42px; }
+    #login-box button { width: 100%; min-height: 44px; margin-top: 18px; border: 1px solid var(--cobalt); border-radius: 4px; background: var(--cobalt); color: #fff; font: 600 15px var(--sans); cursor: pointer; }
+    #login-box button:hover:not(:disabled) { background: var(--cobalt-dark); }
+    #login-box button:disabled { background: var(--rule-soft); border-color: var(--rule-soft); color: #7A8794; cursor: not-allowed; }
+    #login-error { min-height: 18px; margin-top: 12px; }
+
+    @media (max-width: 1100px) { .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 640px) {
+      .mast { padding: 14px 14px 0; }
+      .mast h1 { font-size: 23px; }
+      .plate { font-size: 18px; }
+      .fleet { height: 30px; margin-top: 16px; }
+      .seg { flex-basis: 45%; }
+      .seg + .seg { padding-left: 0; }
+      .seg-num { font-size: 27px; }
+      main { padding: 14px 12px 28px; }
+      .toolbar input { flex-basis: 100%; max-width: none; }
+      .toolbar select { flex: 1 1 calc(50% - 8px); max-width: none; }
+      #count { width: 100%; margin-left: 0; }
+      .toolbar-actions { width: 100%; }
+      .toolbar-actions .btn { flex: 1; }
       .charts { grid-template-columns: 1fr; }
-      .chart-box { height: 220px; }
+      .table-wrap { max-height: 60vh; }
     }
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
     }
-    /* --- Login overlay --- */
-    #login-overlay {
-      position: fixed; inset: 0; z-index: 9999;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #172536 0%, #2454b4 100%);
-    }
-    #login-overlay.hidden { display: none; }
-    #login-box {
-      width: min(380px, calc(100vw - 32px));
-      padding: 28px 26px;
-      background: #fff; border-radius: 10px;
-      box-shadow: 0 24px 70px rgba(19, 34, 53, .35);
-    }
-    #login-box h2 { margin: 0 0 6px; font: 800 22px "Manrope", sans-serif; color: var(--ink); }
-    #login-box p { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
-    #login-box label { display: block; margin-top: 12px; color: #526174; font-size: 12px; font-weight: 700; }
-    #login-box input {
-      display: block; width: 100%; margin-top: 5px;
-      min-height: 40px; padding: 9px 12px;
-      border: 1px solid #d5dde7; border-radius: 6px;
-      font: 500 14px "DM Sans", sans-serif;
-    }
-    #login-box input:focus { outline: 3px solid rgba(50, 104, 213, .16); border-color: var(--blue); }
-    #login-box button {
-      width: 100%; margin-top: 18px; min-height: 42px;
-      border: 1px solid var(--blue); border-radius: 6px;
-      background: var(--blue); color: #fff;
-      font: 700 14px "DM Sans", sans-serif; cursor: pointer;
-    }
-    #login-box button:hover:not(:disabled) { background: var(--blue-dark); }
-    #login-box button:disabled { background: #aeb8c5; border-color: #aeb8c5; cursor: not-allowed; }
-    #login-error { margin-top: 12px; color: #b74843; font-size: 13px; min-height: 18px; }
-        #header-actions {
-      position: absolute; top: 22px; right: max(28px, calc((100vw - 1440px) / 2));
-      display: flex; gap: 8px;
-    }
-    #header-actions button {
-      min-height: 32px; padding: 6px 12px;
-      border: 1px solid rgba(255,255,255,.25); border-radius: 6px;
-      background: transparent; color: #fff;
-      font: 600 12px "DM Sans", sans-serif; cursor: pointer;
-    }
-    #header-actions button:hover { background: rgba(255,255,255,.1); }
   </style>
 </head>
-<body>  <div id="login-overlay">
+<body>
+  <div id="login-overlay">
     <div id="login-box">
       <h2>IT Asset Dashboard</h2>
       <p>Sign in with your HNL domain account</p>
@@ -151,42 +170,41 @@
         <input id="login-pass" type="password" autocomplete="current-password">
       </label>
       <button id="login-btn">Sign in</button>
-      <div id="login-error"></div>
+      <div id="login-error" aria-live="polite"></div>
     </div>
   </div>
 
-   <header>
-    <h1>IT Asset Dashboard</h1>
-    <div id="header-actions">
-      <button id="users-btn" title="Manage users">Manage users</button>
-      <button id="logout-btn" title="Sign out">Sign out</button>
+  <header class="mast">
+    <div class="mast-top">
+      <h1><span class="plate">HNL</span><span>IT Asset Dashboard</span></h1>
+      <div id="header-actions">
+        <span id="whoami"></span>
+        <button id="users-btn" type="button" title="Manage users">Manage users</button>
+        <button id="logout-btn" type="button" title="Sign out">Sign out</button>
+      </div>
+    </div>
+    <div class="fleet" id="fleet" aria-hidden="true"></div>
+    <div class="rail" role="group" aria-label="Filter by status">
+      <button type="button" class="seg" data-status="" aria-pressed="true"><span class="seg-num" id="kpi-total">-</span><span class="seg-label">All assets</span></button>
+      <button type="button" class="seg" data-status="Issued" aria-pressed="false"><span class="seg-num" id="kpi-issued">-</span><span class="seg-label">Issued</span></button>
+      <button type="button" class="seg" data-status="In Stock" aria-pressed="false"><span class="seg-num" id="kpi-stock">-</span><span class="seg-label">In stock</span></button>
+      <button type="button" class="seg" data-status="Under Repair" aria-pressed="false"><span class="seg-num" id="kpi-repair">-</span><span class="seg-label">Under repair</span></button>
+      <button type="button" class="seg" data-status="Retired" aria-pressed="false"><span class="seg-num" id="kpi-retired">-</span><span class="seg-label">Retired</span></button>
     </div>
   </header>
-  <div id="api-error" class="banner">Cannot reach the server. Make sure the API is running, then reload this page.</div>
+  <div id="api-error" class="banner" role="alert">Cannot reach the server. Make sure the API is running, then reload this page.</div>
   <main>
-    <div class="cards">
-      <div class="card"><div class="num" id="kpi-total">-</div><div class="label">Total assets</div></div>
-      <div class="card"><div class="num" id="kpi-issued">-</div><div class="label">Issued</div></div>
-      <div class="card"><div class="num" id="kpi-stock">-</div><div class="label">In stock</div></div>
-      <div class="card"><div class="num" id="kpi-repair">-</div><div class="label">Under repair</div></div>
-    </div>
-
-    <div class="charts">
-      <div class="chart-card"><h3>By status</h3><div class="chart-box"><canvas id="chart-status"></canvas></div></div>
-      <div class="chart-card"><h3>By condition</h3><div class="chart-box"><canvas id="chart-condition"></canvas></div></div>
-      <div class="chart-card"><h3>By item type</h3><div class="chart-box"><canvas id="chart-type"></canvas></div></div>
-      <div class="chart-card"><h3>By department</h3><div class="chart-box"><canvas id="chart-dept"></canvas></div></div>
-    </div>
-
-    <div class="filters">
-      <input id="search" type="search" placeholder="Search serial no., name, model...">
-      <select id="f-dept"><option value="">All departments</option></select>
-      <select id="f-type"><option value="">All item types</option></select>
-      <select id="f-status"><option value="">All statuses</option></select>
-      <select id="f-condition"><option value="">All conditions</option></select>
-      <button class="btn" id="add-btn">+ Add asset</button>
-      <button class="btn secondary" id="export-btn">Export CSV</button>
-      <span id="count"></span>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search serial no., name, model..." aria-label="Search assets">
+      <select id="f-dept" aria-label="Department"><option value="">All departments</option></select>
+      <select id="f-type" aria-label="Item type"><option value="">All item types</option></select>
+      <select id="f-status" aria-label="Status"><option value="">All statuses</option></select>
+      <select id="f-condition" aria-label="Condition"><option value="">All conditions</option></select>
+      <span id="count" aria-live="polite"></span>
+      <span class="toolbar-actions">
+        <button class="btn secondary" id="export-btn" type="button">Export CSV</button>
+        <button class="btn" id="add-btn" type="button">Add asset</button>
+      </span>
     </div>
 
     <div class="table-wrap">
@@ -195,6 +213,16 @@
         <tbody id="body"></tbody>
       </table>
     </div>
+
+    <details class="overview" open>
+      <summary>Overview charts</summary>
+      <div class="charts">
+        <section><h3>By status</h3><div class="chart-box"><canvas id="chart-status" role="img" aria-label="Assets by status"></canvas></div></section>
+        <section><h3>By condition</h3><div class="chart-box"><canvas id="chart-condition" role="img" aria-label="Assets by condition"></canvas></div></section>
+        <section><h3>By item type</h3><div class="chart-box"><canvas id="chart-type" role="img" aria-label="Assets by item type"></canvas></div></section>
+        <section><h3>By department</h3><div class="chart-box"><canvas id="chart-dept" role="img" aria-label="Assets by department"></canvas></div></section>
+      </div>
+    </details>
   </main>
 
   <dialog id="transfer-dialog">
@@ -317,6 +345,8 @@
   </dialog>
   <script>
         const API = "";
+    let loadFailed = false;
+    const slug = (v) => String(v || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const TOKEN_KEY = "hnl_token";
     const USER_KEY  = "hnl_user";
 
@@ -337,6 +367,7 @@
        function showError(e) {
       if (e && e.__handled) return;   // already handled by authedFetch
       document.getElementById("api-error").style.display = "block";
+      loadFailed = true;
     }
     
 
@@ -366,6 +397,7 @@
 
     function showError() {
       document.getElementById("api-error").style.display = "block";
+      loadFailed = true;
     }
 
     async function getJSON(path) {
@@ -388,25 +420,32 @@
       return item ? item.Count : 0;
     }
 
-    Chart.defaults.color = "#6d7a89";
-    Chart.defaults.font.family = '"DM Sans", sans-serif';
-    Chart.defaults.font.size = 11;
-    const colors = ["#3268d5", "#238a82", "#c88721", "#c85b55", "#5685a8", "#78956a", "#8a78b5", "#788596"];
+    Chart.defaults.color = "#546574";
+    Chart.defaults.font.family = '"Barlow", "Segoe UI", system-ui, sans-serif';
+    Chart.defaults.font.size = 13;
+    const palette = ["#1556C0", "#5B7FA6", "#8A9A5B", "#A0705A", "#7A6FA3", "#5E8C8A", "#B58A3C", "#6F7F8F"];
+    const labelColors = { "Issued": "#0F766E", "In Stock": "#1D5FAB", "Under Repair": "#C27C0E", "Retired": "#7A8794",
+                          "New": "#1D5FAB", "Good": "#0F766E", "Fair": "#C27C0E", "Poor": "#B42318" };
 
     function drawChart(id, type, list) {
       new Chart(document.getElementById(id), {
         type: type,
         data: {
           labels: list.map(x => x.Label),
-          datasets: [{ data: list.map(x => x.Count), backgroundColor: colors }]
+          datasets: [{
+            data: list.map(x => x.Count),
+            backgroundColor: type === "bar" ? "#1556C0" : list.map((x, i) => labelColors[x.Label] || palette[i % palette.length]),
+            borderWidth: type === "bar" ? 0 : 2,
+            borderColor: "#FFFFFF"
+          }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: type !== "bar" } },
+          plugins: { legend: { display: type !== "bar", position: "bottom", labels: { boxWidth: 12, boxHeight: 12 } } },
           scales: type === "bar" ? {
-            x: { grid: { display: false }, ticks: { color: "#6d7a89" } },
-            y: { beginAtZero: true, ticks: { precision: 0, color: "#6d7a89" }, grid: { color: "#e9edf2" } }
+            x: { grid: { display: false }, ticks: { color: "#546574" } },
+            y: { beginAtZero: true, ticks: { precision: 0, color: "#546574" }, grid: { color: "#E4E9ED" } }
           } : {}
         }
       });
@@ -418,6 +457,8 @@
         document.getElementById("kpi-issued").textContent = countFor(s.by_status, "Issued");
         document.getElementById("kpi-stock").textContent = countFor(s.by_status, "In Stock");
         document.getElementById("kpi-repair").textContent = countFor(s.by_status, "Under Repair");
+        document.getElementById("kpi-retired").textContent = countFor(s.by_status, "Retired");
+        renderFleet(s.by_status);
 
         drawChart("chart-status", "doughnut", s.by_status);
         drawChart("chart-condition", "pie", s.by_condition);
@@ -459,9 +500,18 @@
       body.innerHTML = "";
       filtered.forEach(a => {
         const tr = document.createElement("tr");
+        tr.className = "row-" + slug(a.Status);
         columns.forEach(([key]) => {
           const td = document.createElement("td");
-          td.textContent = a[key] ?? "";
+          if (key === "Status" || key === "Condition") {
+            const pill = document.createElement("span");
+            pill.className = "tag " + (key === "Status" ? "st-" : "co-") + slug(a[key] || "not set");
+            pill.textContent = a[key] || "Not set";
+            td.appendChild(pill);
+          } else {
+            td.textContent = a[key] ?? "";
+            if (key === "SerialNo" || key === "EmployeeID") td.className = "mono";
+          }
           tr.appendChild(td);
         });
 
@@ -491,9 +541,79 @@
         tr.appendChild(actionTd);
         body.appendChild(tr);
       });
+      if (filtered.length === 0) {
+        const emptyTr = document.createElement("tr");
+        emptyTr.className = "empty-row";
+        const emptyTd = document.createElement("td");
+        emptyTd.colSpan = columns.length + 1;
+        const msg = document.createElement("span");
+        msg.textContent = loadFailed
+          ? "Could not load assets. Check that the server is running, then reload the page."
+          : "No assets match these filters.";
+        emptyTd.appendChild(msg);
+        if (!loadFailed) {
+          const clearBtn = document.createElement("button");
+          clearBtn.type = "button";
+          clearBtn.className = "btn secondary";
+          clearBtn.textContent = "Clear filters";
+          clearBtn.addEventListener("click", clearFilters);
+          emptyTd.appendChild(clearBtn);
+        }
+        emptyTr.appendChild(emptyTd);
+        body.appendChild(emptyTr);
+      }
       document.getElementById("count").textContent =
         "Showing " + filtered.length + " of " + allAssets.length;
+      syncSegments();
     }
+
+    // Proportional bar of the fleet by status (decorative copy of the buttons below it)
+    function renderFleet(list) {
+      const fleet = document.getElementById("fleet");
+      fleet.innerHTML = "";
+      const order = ["Issued", "In Stock", "Under Repair", "Retired"];
+      const rank = (x) => { const i = order.indexOf(x.Label); return i === -1 ? 99 : i; };
+      list.filter(x => x.Count > 0).sort((a, b) => rank(a) - rank(b)).forEach(x => {
+        const seg = document.createElement("i");
+        seg.className = "fl-" + slug(x.Label);
+        seg.style.flex = x.Count + " 1 0";
+        seg.title = x.Label + ": " + x.Count;
+        seg.addEventListener("click", () => {
+          const target = [...document.querySelectorAll(".seg")].find(b => b.dataset.status === x.Label);
+          if (target) target.click();
+        });
+        fleet.appendChild(seg);
+      });
+    }
+
+    // The status counts at the top double as quick filters
+    function syncSegments() {
+      const current = document.getElementById("f-status").value;
+      document.querySelectorAll(".seg").forEach(btn => {
+        btn.setAttribute("aria-pressed", String(btn.dataset.status === current));
+      });
+    }
+
+    function clearFilters() {
+      document.getElementById("search").value = "";
+      filterFields.forEach(([id]) => { document.getElementById(id).value = ""; });
+      renderTable();
+    }
+
+    document.querySelectorAll(".seg").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sel = document.getElementById("f-status");
+        const wanted = btn.dataset.status;
+        if (wanted && ![...sel.options].some(o => o.value === wanted)) {
+          const opt = document.createElement("option");
+          opt.value = wanted;
+          opt.textContent = wanted;
+          sel.appendChild(opt);
+        }
+        sel.value = wanted;
+        renderTable();
+      });
+    });
 
     getJSON("/assets")
       .then(assets => {
@@ -924,6 +1044,10 @@
       showLogin();
     } else {
       hideLogin();
+    }
+    const signedInAs = getUser();
+    if (signedInAs) {
+      document.getElementById("whoami").textContent = signedInAs.DisplayName || signedInAs.Username || "";
     }
   </script>
 </body>
