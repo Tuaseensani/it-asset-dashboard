@@ -48,3 +48,52 @@ CREATE TABLE Users (
 );
 
 
+
+UPDATE Users
+SET AppRole = 'Admin'
+WHERE Username = 'aamish.mirza';
+select * from Users
+
+SELECT UserID, Username, DisplayName, Email, AppRole, IsActive, LastLogin, CreatedAt
+FROM Users;
+
+USE ITAssets;
+GO
+
+ALTER TABLE Assets
+ADD CreatedByUserID INT NULL REFERENCES Users(UserID);
+GO
+
+SELECT TABLE_NAME, COLUMN_NAME
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE COLUMN_NAME = 'CreatedByUserID'
+  AND TABLE_NAME = 'Assets';
+GO
+
+SELECT a.AssetID, a.SerialNo, a.ItemType, a.CreatedByUserID, u.Username, u.DisplayName
+FROM Assets a
+LEFT JOIN Users u ON u.UserID = a.CreatedByUserID
+WHERE a.SerialNo = 'TEST-AUDIT-001';
+
+USE ITAssets;
+GO
+
+DELETE FROM Assets WHERE SerialNo = 'TEST-AUDIT-001';
+GO
+
+SELECT COUNT(*) AS RemainingTestAssets FROM Assets WHERE SerialNo LIKE 'TEST-%';
+GO
+CREATE TABLE AuditLog (
+    LogID           INT IDENTITY(1,1) PRIMARY KEY,
+    AssetID         INT NOT NULL,
+    ActionType      VARCHAR(20) NOT NULL,
+    FieldName       VARCHAR(50) NULL,
+    OldValue        VARCHAR(500) NULL,
+    NewValue        VARCHAR(500) NULL,
+    Details         VARCHAR(500) NULL,
+    PerformedByID   INT NOT NULL,
+    PerformedAt     DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE INDEX IX_AuditLog_AssetID ON AuditLog(AssetID);
+CREATE INDEX IX_AuditLog_PerformedAt ON AuditLog(PerformedAt DESC);

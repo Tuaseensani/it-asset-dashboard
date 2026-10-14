@@ -22,11 +22,11 @@ app.add_middleware(
         "http://127.0.0.1:5500",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
+        "http://192.168.10.108:8000",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 def run_query(sql: str, params: tuple | list = None):
     """
     Executes a SELECT query and returns rows as a list of dictionaries.
@@ -39,6 +39,26 @@ def run_query(sql: str, params: tuple | list = None):
             cursor.execute(sql)
         columns = [col[0] for col in cursor.description]
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+def log_change(cursor, asset_id, action, user_id,
+               field_name=None, old_value=None, new_value=None, details=None):
+    """
+    Insert a row into AuditLog. Called from within a transaction
+    that also modifies the asset. Uses the same cursor/connection
+    so the log and the change commit together.
+    """
+    cursor.execute(
+        "INSERT INTO AuditLog (AssetID, ActionType, FieldName, OldValue, NewValue, Details, PerformedByID) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        asset_id,
+        action,
+        field_name,
+        None if old_value is None else str(old_value)[:500],
+        None if new_value is None else str(new_value)[:500],
+        details,
+        user_id,
+    )
+
 
 # --- Pydantic Models ---
 class NewAsset(BaseModel):
@@ -112,6 +132,10 @@ def create_asset(asset: NewAsset, current_user: dict = Depends(require_role("Adm
             current_user["UserID"],
         )
         new_id = cursor.fetchone()[0]
+        log_change(
+            cursor, new_id, "CREATE", current_user["UserID"],
+            details=f"Created {asset.ItemType} {asset.Brand or ''} {asset.Model or ''} (S/N {asset.SerialNo})".strip()
+        )
         conn.commit()
     except pyodbc.IntegrityError:
         raise HTTPException(status_code=409, detail="Serial number already exists")
@@ -128,10 +152,26 @@ def update_asset(asset_id: int, update: AssetUpdate, current_user: dict = Depend
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT Status FROM Assets WHERE AssetID = ?", asset_id)
-        asset = cursor.fetchone()
-        if asset is None:
+        cursor.execute(
+            "SELECT Status, ItemType, Brand, Model, Memory, Storage, Processor, [Condition] "
+            "FROM Assets WHERE AssetID = ?",
+            asset_id,
+        )
+        row = cursor.fetchone()
+        if row is None:
             raise HTTPException(status_code=404, detail="Asset not found")
+
+        old_values = {
+            "Status":     row[0],
+            "ItemType":   row[1],
+            "Brand":      row[2],
+            "Model":      row[3],
+            "Memory":     row[4],
+            "Storage":    row[5],
+            "Processor":  row[6],
+            "Condition":  row[7],
+        }
+        asset = row
 
         if "Status" in changes and changes["Status"] == "Active":
             cursor.execute(
@@ -150,6 +190,17 @@ def update_asset(asset_id: int, update: AssetUpdate, current_user: dict = Depend
             f"UPDATE Assets SET {set_clause} WHERE AssetID = ?",
             *changes.values(), asset_id,
         )
+
+        for field, new_val in changes.items():
+            old_val = old_values.get(field)
+            if str(old_val) != str(new_val):
+                log_change(
+                    cursor, asset_id, "UPDATE", current_user["UserID"],
+                    field_name=field,
+                    old_value=old_val,
+                    new_value=new_val,
+                )
+
         conn.commit()
     finally:
         conn.close()
@@ -192,6 +243,15 @@ def create_transfer(transfer: NewTransfer, current_user: dict = Depends(require_
 
         new_status = "Issued" if transfer.ToEmployeeID else "In Stock"
         cursor.execute("UPDATE Assets SET Status = ? WHERE AssetID = ?", new_status, transfer.AssetID)
+
+        recipient = transfer.ToEmployeeID or "IT Stock"
+        log_change(
+            cursor, transfer.AssetID, "TRANSFER", current_user["UserID"],
+            field_name="ToEmployeeID",
+            old_value=current_holder,
+            new_value=transfer.ToEmployeeID,
+            details=f"Transferred to {recipient}; handled by {transfer.HandledByID}"
+        )
 
         conn.commit()
     except pyodbc.IntegrityError:
@@ -370,8 +430,37 @@ def update_user_active(
         )
     return {"message": "Status updated", "UserID": user_id, "IsActive": payload.IsActive}
 
+# --- Audit Log ---
+@app.get("/api/audit")
+def get_audit_log(
+    asset_id: Optional[int] = None,
+    limit: int = 200,
+    current_user: dict = Depends(require_role("Admin")),
+):
+    """Return recent audit log entries. Admin only."""
+    sql = """
+        SELECT TOP (?) al.LogID, al.AssetID, al.ActionType, al.FieldName,
+               al.OldValue, al.NewValue, al.Details, al.PerformedAt,
+               a.SerialNo, a.ItemType,
+               u.Username, u.DisplayName
+        FROM AuditLog al
+        LEFT JOIN Assets a ON a.AssetID = al.AssetID
+        LEFT JOIN Users u ON u.UserID = al.PerformedByID
+    """
+    params = [limit]
+    if asset_id is not None:
+        sql += " WHERE al.AssetID = ?"
+        params.append(asset_id)
+    sql += " ORDER BY al.PerformedAt DESC, al.LogID DESC"
+
+    with get_db_cursor() as cur:
+        cur.execute(sql, params)
+        cols = [c[0] for c in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
